@@ -69,4 +69,4 @@ Optimizasyon tamamlandıktan sonra, kullanıcının izleme takvimi oluşturulur 
 
 
 ## ✨Web Sitesi
-Web sitesi linkine tıklayarak lokale kurmadan demoya erişebilirsiniz
+[Web sitesi linkine tıklayarak lokale kurmadan demoya erişebilirsiniz.](https://tv-izleme-planlayici.streamlit.app/)
