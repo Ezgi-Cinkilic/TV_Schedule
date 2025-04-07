@@ -9,7 +9,7 @@ def time_to_minutes(t):
     return datetime.strptime(t, "%H:%M").hour * 60 + datetime.strptime(t, "%H:%M").minute
 
 class TvSchedulerGA:
-    def __init__(self, user_slots, program_file, population_size=100, generations=30, mutation_rate=0.2, tournament_size=10, tur_dagilimi=False):
+    def __init__(self, user_slots, program_file, population_size=100, generations=100, mutation_rate=0.1, tournament_size=10, tur_dagilimi=False):
         self.user_slots = user_slots
         self.programs = pd.read_excel(program_file).to_dict(orient='records')
         self.population_size = population_size
@@ -56,7 +56,7 @@ class TvSchedulerGA:
         base_penalty = max_in_individual + 100  # Cezaların temel birimi
         previous_end = None  # Önceki programın bitiş saatini tutmak için
         
-        # 1. BAŞLANGIÇ BOŞLUĞU: Slot başlangıcı ile ilk program arası
+        # Slot başlangıcı ile ilk program arası 15 dakikadan az olmalı
         if sorted_individual:
             first_program_start = time_to_minutes(sorted_individual[0]["Başlangıç Saati"])
             initial_gap = first_program_start - slot_start
@@ -70,7 +70,7 @@ class TvSchedulerGA:
             end = time_to_minutes(program["Bitiş Saati"])
             program_type = program["Tür"]
     
-            # Çakışma kontrolü (10 dakika tamponlu)
+            # Çakışma kontrolü (10 dakikadan fazla)
             overlap = any(
                 (start < prev_end + 10 and end > prev_start - 10)
                 for prev_start, prev_end in used_time
@@ -88,9 +88,9 @@ class TvSchedulerGA:
     
             # Maksimum 15 dakika boşluk kontrolü
             if previous_end is not None and (start - previous_end) > 15:
-                penalties += base_penalty  # Büyük ceza
+                penalties += base_penalty
     
-            previous_end = end  # Bir sonraki iterasyon için güncelle
+            previous_end = end
             used_time.append((start, end))
             total_value += program["value"]
             type_counts[program_type] += 1
@@ -108,6 +108,7 @@ class TvSchedulerGA:
             final_gap = slot_end - last_program_end
             if final_gap > 15:
                 penalties += base_penalty
+       
         #base_penalty * 0.01 * (final_gap - 15)
         
         # total_idle_time = slot_duration - total_scheduled_time
@@ -120,7 +121,6 @@ class TvSchedulerGA:
     # def create_individual(self, available_programs):
     #     return random.sample(available_programs, random.randint(5, min(20, len(available_programs))))
     def create_individual(self, available_programs, slot):
-        # Convert slot time to minutes
         slot_start = time_to_minutes(slot["start_time"])
         slot_end = time_to_minutes(slot["end_time"])
         slot_duration = slot_end - slot_start
@@ -129,7 +129,6 @@ class TvSchedulerGA:
         current_time = slot_start
         remaining_programs = available_programs.copy()
         
-        # Try to fill at least 70% of the slot duration
         min_fill_duration = 0.7 * slot_duration
         filled_duration = 0
         
@@ -137,7 +136,6 @@ class TvSchedulerGA:
                filled_duration < min_fill_duration and 
                remaining_programs):
             
-            # Find programs that fit in remaining time (with 15 min max gap)
             possible_programs = [
                 p for p in remaining_programs 
                 if (time_to_minutes(p["Başlangıç Saati"]) >= current_time and
@@ -147,7 +145,6 @@ class TvSchedulerGA:
             if not possible_programs:
                 break
                 
-            # Select program weighted by value/duration ratio
             programs_with_weights = [
                 (p, p["value"]/(time_to_minutes(p["Bitiş Saati"])-time_to_minutes(p["Başlangıç Saati"])))
                 for p in possible_programs
@@ -163,17 +160,14 @@ class TvSchedulerGA:
                     k=1
                 )[0]
             
-            # Add to individual
             individual.append(selected)
             program_duration = (time_to_minutes(selected["Bitiş Saati"]) - 
                               time_to_minutes(selected["Başlangıç Saati"]))
             filled_duration += program_duration
             current_time = time_to_minutes(selected["Bitiş Saati"])
             
-            # Add small random gap (0-15 min)
             current_time += random.randint(0, 15)
-            
-            # Remove selected program from available pool
+
             remaining_programs.remove(selected)
         
         return individual
@@ -235,7 +229,7 @@ class TvSchedulerGA:
             # Final programa ekleme
             self.final_schedule.extend([(program, slot) for program in best_schedule_for_slot])
     
-        print(f"\nHaftalık toplam puan: {total_weekly_score}")  # Haftalık toplam puan yazdırılır
+        print(f"\nHaftalık toplam puan: {total_weekly_score}")
         #visualize.visualize_schedule_interactive(self.user_slots, self.final_schedule, "ga")
         return self.final_schedule
 

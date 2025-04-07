@@ -49,7 +49,12 @@ class TvSchedulerCP:
         for program in self.selected_programs:
             selected_programs_by_day[program["Gün"]].append(program)
         
+        # 1. ÇAKIŞMA VE ARDIŞIKLIK KISITLARI
         for day, day_programs in selected_programs_by_day.items():
+            # Programları başlangıç saatine göre sırala
+            day_programs_sorted = sorted(day_programs, key=lambda x: self.start_vars[x["id"]])
+            
+            # a) Çakışma kısıtı
             for i in range(len(day_programs)):
                 for j in range(i+1, len(day_programs)):
                     p1 = day_programs[i]
@@ -58,55 +63,65 @@ class TvSchedulerCP:
                         (self.end_vars[p1["id"]] <= self.start_vars[p2["id"]] + 10) |
                         (self.end_vars[p2["id"]] <= self.start_vars[p1["id"]] + 10)
                     ).OnlyEnforceIf(self.program_vars[p1["id"]], self.program_vars[p2["id"]])
-              
+            
+            # b) Ardışık programlar arası max 15 dakika boşluk
+            for i in range(len(day_programs_sorted)-1):
+                p1 = day_programs_sorted[i]
+                p2 = day_programs_sorted[i+1]
+                
+                # Seçilen ardışık programlar için boşluk kontrolü
+                both_selected = self.model.NewBoolVar(f'both_sel_{p1["id"]}_{p2["id"]}')
+                self.model.AddMultiplicationEquality(both_selected, 
+                                                  [self.program_vars[p1["id"]], 
+                                                   self.program_vars[p2["id"]]])
+                
+                # Max 15 dakika boşluk kısıtı
+                self.model.Add(
+                    self.start_vars[p2["id"]] - self.end_vars[p1["id"]] <= 15
+                ).OnlyEnforceIf(both_selected)
+    
+        # 2. ARDIŞIK MAX 2 AYNI TÜR KISITI
         programs_by_day_genre = defaultdict(lambda: defaultdict(list))
         for program in self.selected_programs:
-                programs_by_day_genre[program["Gün"]][program["Tür"]].append(program)
-            
-            # 2. Her gün ve tür için zaman çizelgesi oluştur
+            programs_by_day_genre[program["Gün"]][program["Tür"]].append(program)
+        
         for day, genres in programs_by_day_genre.items():
             for genre, programs in genres.items():
-                if len(programs) < 3:
-                    continue
+                if len(programs) < 3: continue
                         
-                    # Zaman çizelgesi oluştur (5 dakikalık dilimler)
                 timeline = defaultdict(list)
                 for program in programs:
                     start = self.start_vars[program["id"]]
                     end = self.end_vars[program["id"]]
-                    # Programın kapsadığı tüm 5 dakikalık dilimlere ekle
                     for minute in range(start, end, 5):
                         timeline[minute].append(program["id"])
-                    
-                    # 3. Zaman çizelgesinde ardışık kontrol
+                
                 consecutive_windows = []
                 current_window = []
                     
                 for minute in sorted(timeline.keys()):
-                    if not current_window or minute - current_window[-1] <= 10:  # 10 dakika tolerans
+                    if not current_window or minute - current_window[-1] <= 10:
                         current_window.append(minute)
                     else:
-                        if len(current_window) >= 3:  # En az 3 ardışık dilim
+                        if len(current_window) >= 3:
                             consecutive_windows.append(current_window)
-                            current_window = [minute]
+                        current_window = [minute]
                     
                 if len(current_window) >= 3:
                     consecutive_windows.append(current_window)
-                    
-                    # 4. Her ardışık pencere için kısıt ekle
+                        
                 for window in consecutive_windows:
-                        # Pencereye denk gelen tüm programları bul
                     window_programs = set()
                     for minute in window:
                         window_programs.update(timeline[minute])
-                        
-                        # Bu programlar için kısıt oluştur
+                    
                     if len(window_programs) >= 3:
                         self.model.Add(
                             sum(self.program_vars[pid] for pid in window_programs) <= 2
                         )
-                
-        if self.tur_dagilimi == True:
+        
+        # 3. TÜR DAĞILIMI KISITLARI (False)
+        if self.tur_dagilimi:
             tür_sayacı = {}
             for tür in set(p["Tür"] for p in self.selected_programs):
                 tür_sayacı[tür] = self.model.NewIntVar(0, len(self.selected_programs), f'tür_count_{tür}')
@@ -124,6 +139,7 @@ class TvSchedulerCP:
                     self.model.Add(tür_sayacı[tür2] - tür_sayacı[tür1] <= max_tür_farkı)
             
             total_programs = self.model.NewIntVar(0, len(self.selected_programs), 'total_programs')
+            self.model.Add(total_programs == sum(self.program_vars.values()))
             for tür in tüm_türler:
                 self.model.Add(2 * tür_sayacı[tür] <= total_programs)
 
