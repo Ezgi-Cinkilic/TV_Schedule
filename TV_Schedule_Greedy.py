@@ -31,14 +31,13 @@ def greedy_scheduler(user_slots, programs_file, tur_dagilimi=False):
     tür_counts = {tür: 0 for tür in unique_türler}
     total_value = 0  # Toplam value değerini tutmak için
     
-    # 3. Greedy seçim
     scheduled = []
     
     for (day, slot_start, slot_end), programs_in_slot in programs_by_day_slot.items():
         # Değer ve başlangıç saatine göre sırala
         sorted_programs = sorted(
             programs_in_slot, 
-            key=lambda x: (-x["value"], x["start"])
+            key=lambda x: (x["start"],-x["value"])
         )
         
         selected = []
@@ -48,7 +47,7 @@ def greedy_scheduler(user_slots, programs_file, tur_dagilimi=False):
             # Kısıt kontrolleri
             valid = True
             
-            # Çakışma kontrolü (max 10 dakika)
+            # 1. Çakışma kontrolü (max 10 dakika)
             for selected_prog in selected:
                 overlap_start = max(program["start"], selected_prog["start"])
                 overlap_end = min(program["end"], selected_prog["end"])
@@ -56,15 +55,15 @@ def greedy_scheduler(user_slots, programs_file, tur_dagilimi=False):
                     valid = False
                     break
             
-            # Bekleme süresi (max 15 dakika)
+            # 2. Bekleme süresi (max 15 dakika)
             wait_time = (program["start"] - last_end).total_seconds() / 60
             if wait_time > 15 and selected:
                 valid = False
             
-            # Ardışık tür kontrolü
+            # 3. Ardışık tür kontrolü (max 2 aynı tür)
             if len(selected) >= 2:
-                last_two_tür = [selected[-2]["Tür"], selected[-1]["Tür"]]
-                if last_two_tür[0] == last_two_tür[1] == program["Tür"]:
+                last_two_tür = [selected[-1]["Tür"], selected[-2]["Tür"]]
+                if program["Tür"] == last_two_tür[0] == last_two_tür[1]:
                     valid = False
             
             if tur_dagilimi == True:
