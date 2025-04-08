@@ -9,7 +9,7 @@ def time_to_minutes(t):
     return datetime.strptime(t, "%H:%M").hour * 60 + datetime.strptime(t, "%H:%M").minute
 
 class TvSchedulerGA:
-    def __init__(self, user_slots, program_file, population_size=100, generations=100, mutation_rate=0.1, tournament_size=10, tur_dagilimi=False):
+    def __init__(self, user_slots, program_file, population_size=100, generations=100, mutation_rate=0.1, tournament_size=20, tur_dagilimi=False):
         self.user_slots = user_slots
         self.programs = pd.read_excel(program_file).to_dict(orient='records')
         self.population_size = population_size

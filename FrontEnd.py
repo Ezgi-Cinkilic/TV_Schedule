@@ -426,10 +426,7 @@ def genetik_algoritma():
             # 1. Çözücüyü başlat
             ga_scheduler = TvSchedulerGA(
                 user_slots=st.session_state['user_slots'],
-                program_file="haftalik_program_filtreli.xlsx",
-                population_size=50,
-                generations=100,
-                mutation_rate=0.1
+                program_file="haftalik_program_filtreli.xlsx"
             )
             
             # 2. Problemi çöz
