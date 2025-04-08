@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr  7 19:10:52 2025
-
-@author: ASUS
-"""
-
 import random
 import math
 import copy
@@ -90,7 +83,6 @@ class TvSchedulerALNS:
                     
         return True
     def destroy_random(self, solution, destruction_rate):
-        """Randomly remove programs from solution"""
         destroyed = copy.deepcopy(solution)
         n_to_remove = int(len(destroyed) * destruction_rate)
         removed = []
@@ -120,7 +112,6 @@ class TvSchedulerALNS:
         return destroyed, removed
     
     def destroy_cluster(self, solution, destruction_rate):
-        """Remove programs from the same time cluster"""
         destroyed = copy.deepcopy(solution)
         n_to_remove = int(len(destroyed) * destruction_rate)
         removed = []
@@ -140,7 +131,6 @@ class TvSchedulerALNS:
         return destroyed, removed
     
     def repair_greedy(self, partial_solution, removed):
-        """Greedy repair similar to initial solution"""
         candidate = copy.deepcopy(partial_solution)
         remaining_programs = [p for p in self.programs if p not in candidate]
         
@@ -155,7 +145,6 @@ class TvSchedulerALNS:
         return candidate
     
     def repair_random(self, partial_solution, removed):
-        """Random repair by adding valid programs"""
         candidate = copy.deepcopy(partial_solution)
         remaining_programs = [p for p in self.programs if p not in candidate]
         
@@ -171,7 +160,6 @@ class TvSchedulerALNS:
         return candidate
     
     def repair_tür_balanced(self, partial_solution, removed):
-        """Repair focusing on tür balance"""
         candidate = copy.deepcopy(partial_solution)
         remaining_programs = [p for p in self.programs if p not in candidate]
         
